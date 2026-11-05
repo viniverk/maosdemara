@@ -22,5 +22,24 @@ export const STORE = {
   email: "contato@sualoja.com.br",
 };
 
-// Região das Cloud Functions (São Paulo)
+// 3) Plano do Firebase
+//    "spark" = grátis: pagamento por Pix (você confirma no painel), fotos no Cloudinary
+//    "blaze" = pago por uso: Mercado Pago automático, fotos no Firebase Storage, Instagram automático
+export const MODE = "spark";
+
+// 4) Pix (usado no modo "spark")
+export const PIX = {
+  key: "",               // sua chave Pix: CPF/CNPJ só números, e-mail, +55DDDNUMERO ou chave aleatória
+  name: "Maos de Mara",  // nome de quem recebe (até 25 letras)
+  city: "",              // cidade de quem recebe (até 15 letras), ex.: "Joinville"
+};
+
+// 5) Cloudinary — hospedagem grátis das fotos (usado no modo "spark")
+//    Crie a conta em cloudinary.com e um "upload preset" do tipo Unsigned (veja o README)
+export const CLOUDINARY = {
+  cloudName: "",
+  uploadPreset: "",
+};
+
+// Região das Cloud Functions (São Paulo) — só no modo "blaze"
 export const FUNCTIONS_REGION = "southamerica-east1";

@@ -1,7 +1,8 @@
 import { db, functions } from "./firebase.js";
-import { STORE } from "./config.js";
+import { STORE, MODE, PIX } from "./config.js";
+import { pixPayload, qrSvg } from "./pix.js";
 import { brl, esc, toast, copyText, productUrl } from "./utils.js";
-import { collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection, getDocs, query, where, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
 const $ = (s) => document.querySelector(s);
@@ -248,8 +249,11 @@ function renderDrawer() {
         </div>
         <div class="field"><label>Observações</label><textarea name="notes" style="min-height:60px">${v("notes")}</textarea></div>
       </form>`;
-    foot.innerHTML = totalsHtml + `<button class="btn accent block" id="payBtn" style="margin-top:12px">Pagar com Mercado Pago</button>
-      <p style="font-size:.78rem;color:var(--muted);text-align:center;margin:8px 0 0">Pix, cartão de crédito (parcelado) ou boleto. Você será levado ao ambiente seguro do Mercado Pago.</p>`;
+    foot.innerHTML = totalsHtml + (MODE === "blaze"
+      ? `<button class="btn accent block" id="payBtn" style="margin-top:12px">Pagar com Mercado Pago</button>
+      <p style="font-size:.78rem;color:var(--muted);text-align:center;margin:8px 0 0">Pix, cartão de crédito (parcelado) ou boleto. Você será levado ao ambiente seguro do Mercado Pago.</p>`
+      : `<button class="btn accent block" id="payBtn" style="margin-top:12px">Pagar com Pix</button>
+      <p style="font-size:.78rem;color:var(--muted);text-align:center;margin:8px 0 0">Prefere cartão? <a target="_blank" rel="noopener" href="https://wa.me/${STORE.whatsapp}?text=${encodeURIComponent("Olá! Quero comprar pelo site e pagar no cartão.")}">Fale com a gente no WhatsApp</a> e enviamos um link de pagamento.</p>`);
     $("#backCart").onclick = () => { checkoutStep = "cart"; renderDrawer(); };
     const cepInput = body.querySelector('[name="cep"]');
     cepInput.addEventListener("blur", () => fillCep(cepInput.value));
@@ -276,6 +280,7 @@ async function pay() {
   if (!f.reportValidity()) return;
   const customer = Object.fromEntries(new FormData(f).entries());
   localStorage.setItem("customer_v1", JSON.stringify(customer));
+  if (MODE !== "blaze") return payPix(customer);
   const btn = $("#payBtn");
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner"></span> Gerando pagamento…`;
@@ -290,6 +295,49 @@ async function pay() {
     btn.disabled = false;
     btn.textContent = "Pagar com Mercado Pago";
   }
+}
+
+// ---------- Pix (modo grátis) ----------
+async function payPix(customer) {
+  if (!PIX.key || !PIX.city) { toast("Pix ainda não configurado na loja. Fale com a gente no WhatsApp.", 4000); return; }
+  const btn = $("#payBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> Gerando Pix…`;
+  const t = totals();
+  const items = cart.map((c) => {
+    const p = products.find((x) => x.id === c.id);
+    return { productId: p.id, name: p.name, price: Number(p.price), qty: c.qty, image: p.images?.[0] || "" };
+  });
+  const ref = doc(collection(db, "orders"));
+  const code = ref.id.slice(0, 8).toUpperCase();
+  try {
+    await setDoc(ref, {
+      code, items, subtotal: t.subtotal, shipping: t.shipping, total: t.total,
+      customer, status: "pending", paymentMethod: "pix", createdAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.error(e);
+    toast("Não foi possível registrar o pedido. Tente novamente.", 4000);
+    btn.disabled = false; btn.textContent = "Pagar com Pix";
+    return;
+  }
+  const payload = pixPayload({ key: PIX.key, name: PIX.name, city: PIX.city, amount: t.total, txid: code });
+  const waText = `Olá! Fiz o pedido ${code} no site (${brl(t.total)}) e paguei via Pix. Segue o comprovante:`;
+  cart = []; saveCart();
+  checkoutStep = "cart";
+  $("#drawerTitle").textContent = "Pague com Pix";
+  $("#drawerBody").innerHTML = `
+    <div style="text-align:center">
+      <p style="margin-top:0">Pedido <strong>${code}</strong> registrado! 🎉<br/>Total: <strong>${brl(t.total)}</strong></p>
+      <div style="width:230px;margin:0 auto;background:#fff;padding:8px;border-radius:12px;border:1px solid var(--line)">${qrSvg(payload)}</div>
+      <p style="font-size:.88rem;color:var(--muted)">Abra o app do seu banco, escolha <b>Pix &gt; Ler QR Code</b> ou use o <b>copia e cola</b>:</p>
+      <textarea readonly id="pixCode" style="width:100%;font-size:.72rem;padding:8px;border:1px solid var(--line);border-radius:10px;min-height:70px">${esc(payload)}</textarea>
+      <button class="btn block" id="copyPix" style="margin-top:8px">Copiar código Pix</button>
+    </div>`;
+  $("#drawerFoot").innerHTML = `
+    <a class="btn accent block" target="_blank" rel="noopener" href="https://wa.me/${STORE.whatsapp}?text=${encodeURIComponent(waText)}">Já paguei — enviar comprovante</a>
+    <p style="font-size:.78rem;color:var(--muted);text-align:center;margin:8px 0 0">Assim que confirmarmos o Pix, separamos sua bolsa e combinamos o envio pelo WhatsApp.</p>`;
+  $("#copyPix").onclick = async () => { await copyText(payload); toast("Código Pix copiado!"); };
 }
 
 $("#drawerBody").addEventListener("click", (e) => {

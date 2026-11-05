@@ -27,7 +27,44 @@ cors.json               ← libera o download das fotos (botão do Instagram)
 
 ---
 
-## 🚀 Passo a passo (primeira vez)
+## 🆓 Começando no plano grátis (Spark) — modo atual
+
+O site está configurado com `MODE = "spark"` em `public/js/config.js`. Nesse modo **não precisa de cartão** e funciona assim:
+
+| | Grátis (Spark) | Depois, no Blaze |
+|---|---|---|
+| Pagamento | **Pix**: o site gera o QR Code e o “copia e cola” com o valor do pedido; a cliente envia o comprovante pelo WhatsApp e **você confirma no painel** | Mercado Pago automático (Pix, cartão, boleto) |
+| Cartão | A cliente chama no WhatsApp e você manda um link de pagamento do Mercado Pago | Automático |
+| Estoque | Baixa sozinho quando **você** marca o pedido como **pago** | Baixa sozinho quando o pagamento é aprovado |
+| Fotos | **Cloudinary** (grátis) ou link de imagem | Firebase Storage |
+| Instagram | Compartilhar no app + baixar fotos | + publicação automática |
+
+### Passo a passo no modo grátis
+1. **Firebase** (sem cartão): crie o projeto `maosdemara`; ative **Authentication → E-mail/senha** (e crie seu usuário) e **Firestore** (região `southamerica-east1`). **Não** ative Storage nem Functions. Copie o `firebaseConfig` para `public/js/config.js`.
+2. **Pix**: em `config.js`, preencha `PIX.key` (sua chave), `PIX.name` e `PIX.city`.
+3. **Cloudinary** (fotos): crie conta grátis em <https://cloudinary.com>. No painel, copie o **Cloud name**. Vá em ⚙️ *Settings → Upload → Upload presets → Add upload preset*, mude **Signing mode** para **Unsigned**, salve e copie o nome do preset. Preencha `CLOUDINARY.cloudName` e `CLOUDINARY.uploadPreset` no `config.js`.
+   *(Alternativa sem Cloudinary: suba as fotos na pasta `public/img/produtos/` pelo GitHub e, no painel, use “cole o link de uma foto” com `https://SEU-SITE/img/produtos/nome.jpg`.)*
+4. **Publicar**:
+   ```bash
+   npm install -g firebase-tools
+   firebase login
+   firebase deploy        # publica o site e as regras do Firestore
+   ```
+5. **Admin**: entre em `/admin.html`, copie o ID mostrado e crie o documento em `admins/<ID>` no Firestore (passo 7 abaixo).
+6. **Rotina de vendas**: chegou comprovante no WhatsApp → painel → **Pedidos** → confira o valor no banco → mude para **pago** → salve. Depois **enviado** + código de rastreio.
+
+> 🔒 No modo grátis a cliente registra o pedido direto no banco. Por isso **sempre confira no app do banco** se o valor recebido é o total do pedido antes de marcar como pago (o painel mostra esse lembrete).
+
+### Quando quiser mudar para o Blaze
+Mude `MODE` para `"blaze"` no `config.js`, siga as seções abaixo (Mercado Pago, segredos, CORS) e publique com:
+```bash
+firebase deploy --config firebase.blaze.json
+```
+(O `firebase.blaze.json` inclui Functions, Storage e o webhook do Mercado Pago.)
+
+---
+
+## 🚀 Passo a passo no plano Blaze (completo)
 
 ### 1. Criar o projeto no Firebase
 1. Acesse <https://console.firebase.google.com> → **Adicionar projeto** → nome **`maosdemara`** (se o ID estiver ocupado, o Firebase sugere outro, ex. `maosdemara-1a2b3`; nesse caso troque também em `.firebaserc`).
@@ -35,7 +72,7 @@ cors.json               ← libera o download das fotos (botão do Instagram)
 3. Ative os serviços:
    - **Authentication** → Método de login → **E-mail/senha**. Depois, em *Usuários*, **adicione o seu usuário** (o e-mail e a senha que você vai usar no painel).
    - **Firestore Database** → Criar banco → região **southamerica-east1 (São Paulo)** → modo produção.
-   - **Storage** → Começar → mesma região.
+   - **Storage** → Começar → região **us-east1** (fica dentro da cota gratuita).
 4. Em ⚙️ **Configurações do projeto → Seus apps → Web (`</>`)**, registre um app e copie o objeto `firebaseConfig`.
 
 ### 2. Configurar o código
@@ -66,7 +103,7 @@ cd functions && npm install && cd ..
 
 ### 5. Publicar
 ```bash
-firebase deploy
+firebase deploy --config firebase.blaze.json
 ```
 Isso publica o site, as regras de segurança e as funções. O endereço aparece no final (ex.: `https://meu-projeto.web.app`).
 

@@ -12,10 +12,21 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Pedidos: criados apenas pelas Cloud Functions; admin lê e atualiza status
+    // Pedidos: a cliente pode CRIAR (checkout Pix); só o admin lê, atualiza e exclui
     match /orders/{id} {
-      allow read, update: if isAdmin();
-      allow create, delete: if false;
+      allow create: if request.resource.data.keys().hasOnly(
+            ['code', 'items', 'subtotal', 'shipping', 'total', 'customer', 'status', 'paymentMethod', 'createdAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.paymentMethod == 'pix'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 30
+        && request.resource.data.total is number
+        && request.resource.data.total > 0
+        && request.resource.data.customer is map
+        && request.resource.data.customer.size() <= 15;
+      allow read, update, delete: if isAdmin();
     }
 
     // Lista de administradores: edite pelo Console do Firebase

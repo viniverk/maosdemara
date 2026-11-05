@@ -1,8 +1,8 @@
 import { db, auth, storage, functions } from "./firebase.js";
-import { STORE } from "./config.js";
+import { STORE, MODE, CLOUDINARY } from "./config.js";
 import { brl, esc, toast, copyText, productUrl, urlToFile, downloadBlob, slug } from "./utils.js";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
@@ -14,6 +14,7 @@ let orders = [];
 let settings = { shippingFee: 0, freeShippingOver: 0, hashtags: "#bolsaartesanal #feitoamao #artesanato", captionFooter: "🛍️ Compre pelo link na bio" };
 
 $("#logo").textContent = `${STORE.name} · Painel`;
+if (MODE !== "blaze") $("#igAuto").classList.add("hidden");
 
 // =================== Autenticação ===================
 onAuthStateChanged(auth, async (user) => {
@@ -107,7 +108,7 @@ $("#plist").addEventListener("click", async (e) => {
   if (t.dataset.del) {
     const p = products.find((x) => x.id === t.dataset.del);
     if (!confirm(`Excluir "${p.name}"? Esta ação não pode ser desfeita.`)) return;
-    await Promise.all((p.imagePaths || []).map((path) => deleteObject(ref(storage, path)).catch(() => {})));
+    await Promise.all((p.imagePaths || []).filter(Boolean).map((path) => deleteObject(ref(storage, path)).catch(() => {})));
     await deleteDoc(doc(db, "products", p.id));
     toast("Produto excluído");
     loadProducts();
@@ -152,6 +153,14 @@ $("#imgGrid").addEventListener("click", (e) => {
   if (first !== undefined) imageItems.unshift(...imageItems.splice(Number(first), 1));
   renderImageGrid();
 });
+$("#addUrl").addEventListener("click", () => {
+  const url = $("#imgUrl").value.trim();
+  if (!/^https:\/\//.test(url)) return toast("Cole um link que comece com https://");
+  if (imageItems.length >= 10) return toast("Máximo de 10 fotos");
+  imageItems.push({ url, path: "" });
+  $("#imgUrl").value = "";
+  renderImageGrid();
+});
 $("#fileInput").addEventListener("change", async (e) => {
   const files = [...e.target.files].slice(0, 10 - imageItems.length);
   for (const file of files) {
@@ -194,6 +203,20 @@ async function prepareImage(file) {
   return await new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", 0.86));
 }
 
+async function uploadCloudinary(blob, name) {
+  if (!CLOUDINARY.cloudName || !CLOUDINARY.uploadPreset) {
+    throw new Error("Configure o Cloudinary em js/config.js (ou adicione as fotos por link).");
+  }
+  const fd = new FormData();
+  fd.append("file", blob, name + ".jpg");
+  fd.append("upload_preset", CLOUDINARY.uploadPreset);
+  fd.append("folder", "maosdemara");
+  const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/image/upload`, { method: "POST", body: fd });
+  const j = await r.json();
+  if (!r.ok) throw new Error("Cloudinary: " + (j.error?.message || r.status));
+  return j.secure_url;
+}
+
 $("#productForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
@@ -204,7 +227,10 @@ $("#productForm").addEventListener("submit", async (e) => {
     const pref = editing ? doc(db, "products", editing.id) : doc(collection(db, "products"));
     const images = [], imagePaths = [];
     for (const [i, it] of imageItems.entries()) {
-      if (it.file) {
+      if (it.file && MODE !== "blaze") {
+        images.push(await uploadCloudinary(it.file, `${slug(f.name.value).slice(0, 30)}-${Date.now()}-${i}`));
+        imagePaths.push("");
+      } else if (it.file) {
         const path = `products/${pref.id}/${Date.now()}-${i}-${slug(f.name.value).slice(0, 30)}.jpg`;
         const r = ref(storage, path);
         await uploadBytes(r, it.file, { contentType: "image/jpeg", cacheControl: "public,max-age=31536000" });
@@ -234,7 +260,7 @@ $("#productForm").addEventListener("submit", async (e) => {
     if (!editing && confirm("Produto criado! Quer postar no Instagram agora?")) openInstagram(products.find((p) => p.id === pref.id));
   } catch (err) {
     console.error(err);
-    toast("Erro ao salvar: " + (err.code || err.message));
+    toast("Erro ao salvar: " + (err.code || err.message), 5000);
   } finally {
     btn.disabled = false; btn.textContent = "Salvar";
   }
@@ -333,9 +359,10 @@ function renderOrders() {
     const phone = String(c.phone || "").replace(/\D/g, "");
     return `<div class="order">
       <div class="order-head">
-        <div><strong>#${o.id.slice(0, 8)}</strong> <span class="pill ${o.status}">${STATUS[o.status] || o.status}</span><br/><small>${date}${o.paymentMethod ? " · " + esc(o.paymentMethod) : ""}</small></div>
+        <div><strong>#${o.code || o.id.slice(0, 8)}</strong> <span class="pill ${o.status}">${STATUS[o.status] || o.status}</span><br/><small>${date}${o.paymentMethod ? " · " + esc(o.paymentMethod) : ""}</small></div>
         <strong>${brl(o.total)}</strong>
       </div>
+      ${o.paymentMethod === "pix" && o.status === "pending" ? `<div class="note">💡 Confira no seu banco se entrou um Pix de <b>${brl(o.total)}</b> e confira também se os valores dos itens batem com os preços da loja. Depois mude para <b>pago</b>; o estoque baixa sozinho.</div>` : ""}
       <div>${(o.items || []).map((i) => `${i.qty}× ${esc(i.name)} (${brl(i.price)})`).join("<br/>")}${o.shipping ? `<br/><small>frete ${brl(o.shipping)}</small>` : ""}</div>
       <div><small>
         <b>${esc(c.name)}</b> · ${esc(c.email)} · ${esc(c.phone)}<br/>
@@ -348,7 +375,7 @@ function renderOrders() {
         </select>
         <input data-tracking="${o.id}" placeholder="Código de rastreio" value="${esc(o.tracking || "")}" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;flex:1;min-width:140px" />
         <button class="btn small" data-save-order="${o.id}">Salvar</button>
-        ${phone ? `<a class="btn ghost small" target="_blank" href="https://wa.me/55${phone.replace(/^55/, "")}?text=${encodeURIComponent(`Olá ${c.name?.split(" ")[0] || ""}! Aqui é da ${STORE.name}, sobre o seu pedido #${o.id.slice(0, 8)}.`)}">WhatsApp</a>` : ""}
+        ${phone ? `<a class="btn ghost small" target="_blank" href="https://wa.me/55${phone.replace(/^55/, "")}?text=${encodeURIComponent(`Olá ${c.name?.split(" ")[0] || ""}! Aqui é da ${STORE.name}, sobre o seu pedido #${o.code || o.id.slice(0, 8)}.`)}">WhatsApp</a>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -359,8 +386,22 @@ $("#olist").addEventListener("click", async (e) => {
   if (!id) return;
   const status = document.querySelector(`[data-status="${id}"]`).value;
   const tracking = document.querySelector(`[data-tracking="${id}"]`).value.trim();
-  await updateDoc(doc(db, "orders", id), { status, tracking, updatedAt: serverTimestamp() });
-  Object.assign(orders.find((o) => o.id === id), { status, tracking });
+  const o = orders.find((x) => x.id === id);
+  const batch = writeBatch(db);
+  const upd = { status, tracking, updatedAt: serverTimestamp() };
+  const paid = ["approved", "shipped", "delivered"].includes(status);
+  // Pagou → baixa o estoque (uma vez). Cancelou depois de pago → devolve.
+  if (paid && !o.stockDeducted) {
+    o.items.forEach((it) => batch.update(doc(db, "products", it.productId), { stock: increment(-it.qty) }));
+    upd.stockDeducted = true;
+  } else if (["cancelled", "rejected"].includes(status) && o.stockDeducted) {
+    o.items.forEach((it) => batch.update(doc(db, "products", it.productId), { stock: increment(it.qty) }));
+    upd.stockDeducted = false;
+  }
+  batch.update(doc(db, "orders", id), upd);
+  try { await batch.commit(); } catch (err) { console.error(err); return toast("Erro ao salvar (algum produto foi excluído?)", 4000); }
+  Object.assign(o, upd);
+  if ("stockDeducted" in upd) loadProducts();
   toast("Pedido atualizado");
   renderOrders();
 });

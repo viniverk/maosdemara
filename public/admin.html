@@ -97,7 +97,7 @@
         <select id="orderFilter" class="field" style="padding:8px 12px;border:1px solid var(--line);border-radius:10px">
           <option value="">Todos</option>
           <option value="approved">Pagos (a enviar)</option>
-          <option value="pending">Aguardando pagamento</option>
+          <option value="pending">Aguardando pagamento / Pix a conferir</option>
           <option value="shipped">Enviados</option>
           <option value="delivered">Entregues</option>
           <option value="cancelled">Cancelados/recusados</option>
@@ -141,6 +141,7 @@
           <label>Fotos (a primeira é a capa) — até 10</label>
           <div class="img-grid" id="imgGrid"></div>
           <input type="file" id="fileInput" accept="image/*" multiple style="margin-top:8px" />
+          <div style="display:flex;gap:6px;margin-top:8px"><input id="imgUrl" placeholder="…ou cole o link de uma foto (https://…)" style="flex:1" /><button type="button" class="btn ghost small" id="addUrl">Adicionar</button></div>
         </div>
         <div style="display:flex;gap:18px;flex-wrap:wrap">
           <label class="check"><input type="checkbox" name="active" checked /> Visível na loja</label>
