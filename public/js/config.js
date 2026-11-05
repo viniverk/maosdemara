@@ -18,7 +18,7 @@ export const STORE = {
   name: "Mãos de Mara",
   tagline: "Bolsas feitas à mão, uma a uma",
   instagram: "seu_perfil",          // sem @
-  whatsapp: "5547999999999",        // DDI + DDD + número, só dígitos
+  whatsapp: "5547984988380",        // DDI + DDD + número, só dígitos
   email: "contato@sualoja.com.br",
 };
 
