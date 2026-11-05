@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mãos de Mara — Bolsas artesanais feitas à mão</title>
+  <meta name="description" content="Bolsas artesanais feitas à mão, peça por peça. Compre online com Pix, cartão ou boleto." />
+  <meta property="og:title" content="Mãos de Mara — Bolsas artesanais feitas à mão" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/img/og-maos-de-mara.jpg" />
+  <meta name="theme-color" content="#1a3f2d" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="logo" data-store-name>Mãos de <span>Mara</span></a>
+      <nav class="nav">
+        <a href="#colecao">Coleção</a>
+        <a href="#sobre">Sobre</a>
+        <a data-instagram-link target="_blank" rel="noopener">Instagram</a>
+        <button class="icon-btn" id="cartBtn" aria-label="Abrir carrinho">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+          <span class="badge hidden" id="cartCount">0</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <div class="hero-text">
+        <div class="eyebrow">bolsas e acessórios • feitos à mão</div>
+        <h1>Mãos<br />de <em>Mara</em></h1>
+        <p data-store-tagline>Bolsas feitas à mão, uma a uma.</p>
+        <div class="hero-actions">
+          <a href="#colecao" class="btn light">Ver coleção</a>
+          <a data-whatsapp-link class="btn outline-light" target="_blank" rel="noopener">Encomendar pelo WhatsApp</a>
+        </div>
+      </div>
+      <div class="hero-art"><img src="img/arte-maos-de-mara.jpg" alt="Mãos de Mara — bolsas e acessórios artesanais" fetchpriority="high" /></div>
+    </div>
+  </section>
+
+  <section class="section" id="colecao">
+    <div class="container">
+      <div class="section-head">
+        <h2>Coleção</h2>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="grid" id="grid"><p class="empty">Carregando peças…</p></div>
+    </div>
+  </section>
+
+  <section class="section about" id="sobre">
+    <div class="container about-grid">
+      <div class="about-leaf" aria-hidden="true">
+        <svg viewBox="0 0 220 220" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M20 200 C80 150 130 100 200 20"/>
+          <path d="M60 168 C40 150 38 128 52 112 C66 128 70 150 60 168Z"/><path d="M60 168 C80 160 102 162 114 178 C96 188 74 184 60 168Z"/>
+          <path d="M100 132 C82 112 84 90 100 76 C112 94 112 116 100 132Z"/><path d="M100 132 C122 126 142 130 152 146 C134 154 114 150 100 132Z"/>
+          <path d="M140 90 C126 72 130 52 146 40 C156 58 154 76 140 90Z"/><path d="M140 90 C160 86 178 92 186 106 C168 112 150 106 140 90Z"/>
+          <circle cx="176" cy="44" r="4"/><circle cx="188" cy="58" r="3"/><circle cx="72" cy="140" r="3"/>
+        </svg>
+      </div>
+      <div>
+        <h2>conheça a<br /><em>Mãos de Mara</em></h2>
+        <p>Cada bolsa nasce das mãos da Mara, ponto a ponto, com tecidos e fios escolhidos com carinho. Produzimos em pequenas quantidades, por isso muitas peças são únicas — quando esgotam, podem não voltar.</p>
+        <p>Feitas para acompanhar você no dia a dia, com o charme do que é artesanal e a durabilidade do que é bem-feito.</p>
+        <a data-instagram-link class="btn ghost" target="_blank" rel="noopener">Acompanhe no Instagram</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-brand"><strong data-store-plain-name></strong><span>bolsas e acessórios · feito à mão</span></div>
+      <div>Pagamento seguro via Mercado Pago • Pix, cartão e boleto</div>
+    </div>
+  </footer>
+
+  <!-- Modal de produto -->
+  <div class="overlay hidden" id="productOverlay">
+    <div class="modal" role="dialog" aria-modal="true">
+      <button class="icon-btn modal-close" data-close aria-label="Fechar">✕</button>
+      <div id="productContent"></div>
+    </div>
+  </div>
+
+  <!-- Carrinho -->
+  <aside class="drawer" id="drawer" aria-label="Carrinho">
+    <div class="drawer-head">
+      <h3 id="drawerTitle">Sua sacola</h3>
+      <button class="icon-btn" id="drawerClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+    <div class="drawer-foot" id="drawerFoot"></div>
+  </aside>
+
+  <script type="module" src="js/store.js"></script>
+</body>
+</html>

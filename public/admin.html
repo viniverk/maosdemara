@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Painel da loja</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    body { background: #f3ece2; }
+    .admin-wrap { padding: 28px 0 80px; }
+    .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 22px; overflow-x: auto; }
+    .tab { border: 0; background: none; padding: 12px 16px; color: var(--muted); font-weight: 600; border-bottom: 2px solid transparent; white-space: nowrap; }
+    .tab.active { color: var(--ink); border-color: var(--accent); }
+    .panel { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .toolbar h2 { font-family: var(--serif); font-weight: 500; margin: 0; }
+    .plist { display: grid; gap: 10px; }
+    .prow { display: grid; grid-template-columns: 72px 1fr auto; gap: 14px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+    .prow img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; background: #eadfce; }
+    .prow .meta { font-size: .85rem; color: var(--muted); }
+    .prow .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: .72rem; font-weight: 700; }
+    .pill.on { background: #e3ead2; color: #4f5a26; } .pill.off { background: #eee; color: #777; }
+    .pill.pending { background: #fbecc8; color: #8a6200; } .pill.approved { background: #d9efd9; color: #24692b; }
+    .pill.shipped { background: #dbe8f7; color: #22508a; } .pill.delivered { background: #e3ead2; color: #4f5a26; }
+    .pill.rejected, .pill.cancelled { background: #f6dcdc; color: #8f2a2a; }
+    .ig-btn { background: linear-gradient(45deg, #f09433, #dc2743 50%, #bc1888); color: #fff; border: 0; }
+    .ig-btn:hover { filter: brightness(1.08); background: linear-gradient(45deg, #f09433, #dc2743 50%, #bc1888); }
+    .img-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .img-grid .thumb { position: relative; width: 90px; height: 90px; }
+    .img-grid img { width: 90px; height: 90px; object-fit: cover; border-radius: 10px; }
+    .img-grid .thumb button { position: absolute; top: -6px; right: -6px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--ink); color: #fff; font-size: .75rem; }
+    .img-grid .thumb .first { position: absolute; left: 4px; bottom: 4px; background: var(--paper); font-size: .65rem; padding: 1px 6px; border-radius: 6px; font-weight: 700; }
+    .order { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: #fff; display: grid; gap: 8px; }
+    .order-head { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .order small { color: var(--muted); }
+    .ig-preview { display: flex; gap: 8px; overflow-x: auto; }
+    .ig-preview img { width: 120px; height: 150px; object-fit: cover; border-radius: 10px; }
+    .modal.narrow { width: min(640px, 100%); padding: 26px; }
+    .note { background: #fbf3e4; border: 1px solid #ecdcbf; border-radius: 10px; padding: 10px 12px; font-size: .85rem; color: #6e5434; }
+    @media (max-width: 640px) { .prow { grid-template-columns: 56px 1fr; } .prow img { width: 56px; height: 56px; } .prow .actions { grid-column: 1 / -1; justify-content: flex-start; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="logo" id="logo">Painel</a>
+      <div class="nav"><span id="who" style="font-size:.85rem;color:var(--muted)"></span><button class="btn ghost small hidden" id="logout">Sair</button></div>
+    </div>
+  </header>
+
+  <!-- Login -->
+  <div class="container hidden" id="loginView">
+    <div class="status-card" style="text-align:left">
+      <h1 style="margin-top:0">Entrar no painel</h1>
+      <form class="form" id="loginForm">
+        <div class="field"><label>E-mail</label><input name="email" type="email" required autocomplete="username" /></div>
+        <div class="field"><label>Senha</label><input name="password" type="password" required autocomplete="current-password" /></div>
+        <button class="btn accent block">Entrar</button>
+        <button type="button" class="link-btn" id="forgot">Esqueci minha senha</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sem permissão -->
+  <div class="container hidden" id="noAdminView">
+    <div class="status-card">
+      <h1>Quase lá!</h1>
+      <p>Sua conta ainda não é administradora. No Console do Firebase, abra o <b>Firestore</b>, crie a coleção <code>admins</code> e um documento com o ID abaixo (pode ficar sem campos):</p>
+      <p><code id="uidBox" style="font-size:1rem;background:#fff;padding:6px 10px;border-radius:8px;border:1px solid var(--line)"></code></p>
+      <button class="btn small" id="copyUid">Copiar ID</button>
+      <p style="color:var(--muted);font-size:.9rem">Depois, recarregue esta página.</p>
+    </div>
+  </div>
+
+  <!-- App -->
+  <main class="container admin-wrap hidden" id="appView">
+    <div class="tabs">
+      <button class="tab active" data-tab="products">Produtos</button>
+      <button class="tab" data-tab="orders">Pedidos</button>
+      <button class="tab" data-tab="settings">Configurações</button>
+    </div>
+
+    <section data-panel="products" class="panel">
+      <div class="toolbar">
+        <h2>Produtos</h2>
+        <button class="btn accent small" id="newProduct">+ Nova bolsa</button>
+      </div>
+      <div class="plist" id="plist"></div>
+    </section>
+
+    <section data-panel="orders" class="panel hidden">
+      <div class="toolbar">
+        <h2>Pedidos</h2>
+        <select id="orderFilter" class="field" style="padding:8px 12px;border:1px solid var(--line);border-radius:10px">
+          <option value="">Todos</option>
+          <option value="approved">Pagos (a enviar)</option>
+          <option value="pending">Aguardando pagamento</option>
+          <option value="shipped">Enviados</option>
+          <option value="delivered">Entregues</option>
+          <option value="cancelled">Cancelados/recusados</option>
+        </select>
+      </div>
+      <div class="plist" id="olist"></div>
+    </section>
+
+    <section data-panel="settings" class="panel hidden">
+      <div class="toolbar"><h2>Configurações</h2></div>
+      <form class="form" id="settingsForm" style="max-width:560px">
+        <div class="row">
+          <div class="field"><label>Frete fixo (R$)</label><input name="shippingFee" type="number" min="0" step="0.01" /></div>
+          <div class="field"><label>Frete grátis acima de (R$, 0 = nunca)</label><input name="freeShippingOver" type="number" min="0" step="0.01" /></div>
+        </div>
+        <div class="field"><label>Hashtags padrão do Instagram</label><textarea name="hashtags" placeholder="#bolsaartesanal #feitoamao #crochê"></textarea></div>
+        <div class="field"><label>Texto final da legenda</label><input name="captionFooter" placeholder="🛍️ Compre pelo link na bio" /></div>
+        <button class="btn accent">Salvar</button>
+      </form>
+    </section>
+  </main>
+
+  <!-- Modal: produto -->
+  <div class="overlay hidden" id="productModal">
+    <div class="modal narrow">
+      <button class="icon-btn modal-close" data-close aria-label="Fechar">✕</button>
+      <h2 style="font-family:var(--serif);font-weight:500;margin-top:0" id="pmTitle">Nova bolsa</h2>
+      <form class="form" id="productForm">
+        <div class="field"><label>Nome*</label><input name="name" required maxlength="120" /></div>
+        <div class="row">
+          <div class="field"><label>Preço (R$)*</label><input name="price" type="number" min="1" step="0.01" required /></div>
+          <div class="field"><label>Estoque*</label><input name="stock" type="number" min="0" step="1" required value="1" /></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Categoria</label><input name="category" list="cats" placeholder="Tiracolo, Praia, Clutch…" /><datalist id="cats"></datalist></div>
+          <div class="field"><label>Medidas</label><input name="dimensions" placeholder="30 x 25 x 10 cm" /></div>
+        </div>
+        <div class="field"><label>Materiais</label><input name="materials" placeholder="Fio de algodão, alça de couro…" /></div>
+        <div class="field"><label>Descrição</label><textarea name="description"></textarea></div>
+        <div class="field">
+          <label>Fotos (a primeira é a capa) — até 10</label>
+          <div class="img-grid" id="imgGrid"></div>
+          <input type="file" id="fileInput" accept="image/*" multiple style="margin-top:8px" />
+        </div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap">
+          <label class="check"><input type="checkbox" name="active" checked /> Visível na loja</label>
+          <label class="check"><input type="checkbox" name="featured" /> Destaque</label>
+        </div>
+        <button class="btn accent" id="saveProduct">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Instagram -->
+  <div class="overlay hidden" id="igModal">
+    <div class="modal narrow">
+      <button class="icon-btn modal-close" data-close aria-label="Fechar">✕</button>
+      <h2 style="font-family:var(--serif);font-weight:500;margin-top:0">Postar no Instagram</h2>
+      <div class="ig-preview" id="igPreview"></div>
+      <div class="field" style="margin-top:14px"><label>Legenda</label><textarea id="igCaption" style="min-height:170px"></textarea></div>
+      <div style="display:grid;gap:10px;margin-top:12px">
+        <button class="btn ig-btn" id="igShare">📱 Compartilhar no app do Instagram</button>
+        <button class="btn ghost" id="igDownload">⬇️ Baixar fotos + copiar legenda</button>
+        <button class="btn" id="igAuto">⚡ Publicar automaticamente no feed</button>
+      </div>
+      <p class="note" style="margin-top:14px" id="igNote">
+        <b>No celular:</b> “Compartilhar” copia a legenda e abre o menu do sistema — escolha <b>Instagram</b> (Feed ou Stories) e cole a legenda.<br />
+        <b>Publicar automaticamente</b> usa a API oficial do Instagram (precisa de conta profissional e token configurado — veja o README).
+      </p>
+    </div>
+  </div>
+
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

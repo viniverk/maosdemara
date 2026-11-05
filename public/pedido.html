@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Status do pedido</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="status-card" id="card">
+      <div class="status-icon" id="icon">⏳</div>
+      <h1 id="title">Processando…</h1>
+      <p id="msg" style="color:var(--muted)"></p>
+      <p id="ref" style="font-size:.85rem;color:var(--muted)"></p>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px">
+        <a href="/" class="btn">Voltar à loja</a>
+        <a id="wa" class="btn ghost" target="_blank" rel="noopener">Falar no WhatsApp</a>
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    import { STORE } from "./js/config.js";
+    const q = new URLSearchParams(location.search);
+    const status = q.get("collection_status") || q.get("status") || q.get("result");
+    const order = q.get("external_reference") || localStorage.getItem("last_order") || "";
+    const set = (icon, title, msg) => { icon_.textContent = icon; title_.textContent = title; msg_.textContent = msg; };
+    const icon_ = document.getElementById("icon"), title_ = document.getElementById("title"), msg_ = document.getElementById("msg");
+
+    if (status === "approved") {
+      set("🎉", "Pagamento aprovado!", "Obrigada pela compra! Você vai receber a confirmação por e-mail e entraremos em contato pelo WhatsApp para combinar o envio.");
+      localStorage.removeItem("cart_v1");
+    } else if (["pending", "in_process"].includes(status)) {
+      set("⏳", "Pagamento em análise", "Assim que o pagamento for confirmado (Pix ou boleto podem levar alguns minutos), seu pedido será separado.");
+      localStorage.removeItem("cart_v1");
+    } else {
+      set("😕", "Pagamento não concluído", "Não se preocupe, nada foi cobrado. Sua sacola continua salva — você pode tentar de novo ou falar com a gente.");
+    }
+    if (order) document.getElementById("ref").textContent = `Pedido nº ${order}`;
+    document.getElementById("wa").href = `https://wa.me/${STORE.whatsapp}?text=${encodeURIComponent(`Olá! Sobre o meu pedido ${order}`)}`;
+    document.title = `${title_.textContent} — ${STORE.name}`;
+  </script>
+</body>
+</html>

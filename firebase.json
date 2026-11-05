@@ -1,0 +1,18 @@
+{
+  "hosting": {
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "cleanUrls": false,
+    "rewrites": [
+      { "source": "/api/mp-webhook", "function": { "functionId": "mpWebhook", "region": "southamerica-east1" } }
+    ],
+    "headers": [
+      { "source": "**/*.@(js|css)", "headers": [{ "key": "Cache-Control", "value": "public,max-age=300" }] }
+    ]
+  },
+  "functions": [
+    { "source": "functions", "codebase": "default", "ignore": ["node_modules", ".git", "*.log", ".env.example"] }
+  ],
+  "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
+  "storage": { "rules": "storage.rules" }
+}

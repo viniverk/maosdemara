@@ -1,0 +1,16 @@
+{
+  "name": "maosdemara-functions",
+  "description": "Cloud Functions da loja Mãos de Mara",
+  "main": "index.js",
+  "engines": { "node": "22" },
+  "private": true,
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0"
+  }
+}
