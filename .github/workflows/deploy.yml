@@ -2,10 +2,8 @@
 # Precisa do secret FIREBASE_SERVICE_ACCOUNT no GitHub (veja o README).
 name: Deploy site (Firebase Hosting)
 
+# Desativado no push enquanto o site está no GitHub Pages. Para usar, volte o bloco "push".
 on:
-  push:
-    branches: [main]
-    paths: ["public/**", "firebase.json", ".github/workflows/deploy.yml"]
   workflow_dispatch:
 
 jobs:

@@ -33,7 +33,9 @@ export async function copyText(text) {
   }
 }
 
-export const productUrl = (id) => `${location.origin}/#p=${encodeURIComponent(id)}`;
+// endereço base do site (funciona no GitHub Pages em /maosdemara/ e no Firebase)
+export const siteBase = () => location.origin + location.pathname.replace(/[^/]*$/, "");
+export const productUrl = (id) => `${siteBase()}#p=${encodeURIComponent(id)}`;
 
 /** Converte uma URL de imagem em File (para compartilhar com o app do Instagram). */
 export async function urlToFile(url, name) {
