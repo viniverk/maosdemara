@@ -1,7 +1,7 @@
 import { db, functions } from "./firebase.js";
-import { STORE, MODE, PIX } from "./config.js";
+import { STORE, MODE, PIX, INFINITEPAY } from "./config.js";
 import { pixPayload, qrSvg } from "./pix.js";
-import { brl, esc, toast, copyText, productUrl } from "./utils.js";
+import { brl, esc, toast, copyText, productUrl, siteBase } from "./utils.js";
 import { collection, getDocs, query, where, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
@@ -253,11 +253,15 @@ function renderDrawer() {
       ? `<button class="btn accent block" id="payBtn" style="margin-top:12px">Pagar com Mercado Pago</button>
       <p style="font-size:.78rem;color:var(--muted);text-align:center;margin:8px 0 0">Pix, cartão de crédito (parcelado) ou boleto. Você será levado ao ambiente seguro do Mercado Pago.</p>`
       : `<button class="btn accent block" id="payBtn" style="margin-top:12px">Pagar com Pix</button>
-      <p style="font-size:.78rem;color:var(--muted);text-align:center;margin:8px 0 0">Prefere cartão? <a target="_blank" rel="noopener" href="https://wa.me/${STORE.whatsapp}?text=${encodeURIComponent("Olá! Quero comprar pelo site e pagar no cartão.")}">Fale com a gente no WhatsApp</a> e enviamos um link de pagamento.</p>`);
+      ${INFINITEPAY.handle
+        ? `<button class="btn block" id="cardBtn" style="margin-top:8px">💳 Cartão de crédito (até 12x)</button>
+      <p style="font-size:.78rem;color:var(--muted);text-align:center;margin:8px 0 0">No cartão, você paga no ambiente seguro da InfinitePay.</p>`
+        : `<p style="font-size:.78rem;color:var(--muted);text-align:center;margin:8px 0 0">Prefere cartão? <a target="_blank" rel="noopener" href="https://wa.me/${STORE.whatsapp}?text=${encodeURIComponent("Olá! Quero comprar pelo site e pagar no cartão.")}">Fale com a gente no WhatsApp</a> e enviamos um link de pagamento.</p>`}`);
     $("#backCart").onclick = () => { checkoutStep = "cart"; renderDrawer(); };
     const cepInput = body.querySelector('[name="cep"]');
     cepInput.addEventListener("blur", () => fillCep(cepInput.value));
     $("#payBtn").onclick = pay;
+    $("#cardBtn")?.addEventListener("click", payCard);
   }
 }
 
@@ -297,12 +301,8 @@ async function pay() {
   }
 }
 
-// ---------- Pix (modo grátis) ----------
-async function payPix(customer) {
-  if (!PIX.key || !PIX.city) { toast("Pix ainda não configurado na loja. Fale com a gente no WhatsApp.", 4000); return; }
-  const btn = $("#payBtn");
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span> Gerando Pix…`;
+// ---------- Pedido (modo grátis) ----------
+async function createOrder(customer, paymentMethod) {
   const t = totals();
   const items = cart.map((c) => {
     const p = products.find((x) => x.id === c.id);
@@ -310,17 +310,65 @@ async function payPix(customer) {
   });
   const ref = doc(collection(db, "orders"));
   const code = ref.id.slice(0, 8).toUpperCase();
+  const data = { code, items, subtotal: t.subtotal, shipping: t.shipping, total: t.total, customer, status: "pending", paymentMethod, createdAt: serverTimestamp() };
+  await setDoc(ref, data);
+  return { id: ref.id, ...data };
+}
+
+// ---------- Cartão via InfinitePay ----------
+async function payCard() {
+  const f = $("#checkoutForm");
+  if (!f.reportValidity()) return;
+  const customer = Object.fromEntries(new FormData(f).entries());
+  localStorage.setItem("customer_v1", JSON.stringify(customer));
+  const btn = $("#cardBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner" style="border-color:rgba(0,0,0,.2);border-top-color:var(--green)"></span> Abrindo pagamento…`;
   try {
-    await setDoc(ref, {
-      code, items, subtotal: t.subtotal, shipping: t.shipping, total: t.total,
-      customer, status: "pending", paymentMethod: "pix", createdAt: serverTimestamp(),
+    const order = await createOrder(customer, "card");
+    const phone = String(customer.phone || "").replace(/\D/g, "").replace(/^55/, "");
+    const items = order.items.map((i) => ({ quantity: i.qty, price: Math.round(i.price * 100), description: i.name.slice(0, 100) }));
+    if (order.shipping > 0) items.push({ quantity: 1, price: Math.round(order.shipping * 100), description: "Frete" });
+    const payload = {
+      handle: INFINITEPAY.handle,
+      order_nsu: order.id,
+      redirect_url: `${siteBase()}pedido.html`,
+      items,
+      customer: { name: customer.name, email: customer.email, ...(phone.length >= 10 ? { phone_number: "+55" + phone } : {}) },
+      address: { cep: String(customer.cep || "").replace(/\D/g, ""), number: customer.number, complement: customer.complement || "" },
+    };
+    const r = await fetch("https://api.checkout.infinitepay.io/links", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
     });
+    const j = await r.json().catch(() => ({}));
+    const url = j.url || j.link || j.checkout_url || j.data?.url;
+    if (!r.ok || !url) throw new Error(j.message || "Falha ao gerar o link de pagamento");
+    localStorage.setItem("last_order", order.id);
+    localStorage.setItem("last_order_code", order.code);
+    window.location.href = url;
   } catch (e) {
+    console.error(e);
+    toast("Não foi possível abrir o pagamento no cartão. Tente o Pix ou fale com a gente.", 5000);
+    btn.disabled = false; btn.textContent = "💳 Cartão de crédito (até 12x)";
+  }
+}
+
+// ---------- Pix (modo grátis) ----------
+async function payPix(customer) {
+  if (!PIX.key || !PIX.city) { toast("Pix ainda não configurado na loja. Fale com a gente no WhatsApp.", 4000); return; }
+  const btn = $("#payBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> Gerando Pix…`;
+  const t = totals();
+  let order;
+  try { order = await createOrder(customer, "pix"); }
+  catch (e) {
     console.error(e);
     toast("Não foi possível registrar o pedido. Tente novamente.", 4000);
     btn.disabled = false; btn.textContent = "Pagar com Pix";
     return;
   }
+  const { code } = order;
   const payload = pixPayload({ key: PIX.key, name: PIX.name, city: PIX.city, amount: t.total, txid: code });
   const waText = `Olá! Fiz o pedido ${code} no site (${brl(t.total)}) e paguei via Pix. Segue o comprovante:`;
   cart = []; saveCart();

@@ -21,24 +21,40 @@
     </div>
   </div>
   <script type="module">
-    import { STORE } from "./js/config.js";
+    import { STORE, INFINITEPAY } from "./js/config.js";
     const q = new URLSearchParams(location.search);
-    const status = q.get("collection_status") || q.get("status") || q.get("result");
-    const order = q.get("external_reference") || localStorage.getItem("last_order") || "";
-    const set = (icon, title, msg) => { icon_.textContent = icon; title_.textContent = title; msg_.textContent = msg; };
     const icon_ = document.getElementById("icon"), title_ = document.getElementById("title"), msg_ = document.getElementById("msg");
+    const set = (icon, title, msg) => { icon_.textContent = icon; title_.textContent = title; msg_.textContent = msg; };
+    const orderId = q.get("order_nsu") || q.get("external_reference") || localStorage.getItem("last_order") || "";
+    const code = localStorage.getItem("last_order_code") || orderId.slice(0, 8).toUpperCase();
+    const approved = () => { set("🎉", "Pagamento aprovado!", "Obrigada pela compra! Vamos separar sua bolsa e combinar o envio pelo WhatsApp."); localStorage.removeItem("cart_v1"); };
 
-    if (status === "approved") {
-      set("🎉", "Pagamento aprovado!", "Obrigada pela compra! Você vai receber a confirmação por e-mail e entraremos em contato pelo WhatsApp para combinar o envio.");
-      localStorage.removeItem("cart_v1");
-    } else if (["pending", "in_process"].includes(status)) {
-      set("⏳", "Pagamento em análise", "Assim que o pagamento for confirmado (Pix ou boleto podem levar alguns minutos), seu pedido será separado.");
-      localStorage.removeItem("cart_v1");
+    if (q.get("order_nsu") && INFINITEPAY.handle) {
+      // Retorno do cartão (InfinitePay): confirma o pagamento direto na API
+      const ref = { handle: INFINITEPAY.handle, order_nsu: q.get("order_nsu"), transaction_nsu: q.get("transaction_nsu") || "", slug: q.get("slug") || "" };
+      let paid = false;
+      try {
+        const r = await fetch("https://api.checkout.infinitepay.io/payment_check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(ref) });
+        const j = await r.json();
+        paid = j.paid === true || (r.ok && j.success !== false && Number(j.paid_amount) > 0);
+      } catch (e) { console.warn(e); }
+      if (paid) approved();
+      else set("⏳", "Pagamento em análise", "Assim que o pagamento for confirmado, seu pedido será separado. Se tiver dúvidas, fale com a gente.");
+      // guarda a referência no pedido para a loja conferir no painel
+      try {
+        const { db } = await import("./js/firebase.js");
+        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+        await updateDoc(doc(db, "orders", ref.order_nsu), { paymentRef: { transaction_nsu: ref.transaction_nsu, slug: ref.slug, receipt_url: q.get("receipt_url") || "" } });
+      } catch (e) { console.warn("não foi possível salvar a referência", e); }
     } else {
-      set("😕", "Pagamento não concluído", "Não se preocupe, nada foi cobrado. Sua sacola continua salva — você pode tentar de novo ou falar com a gente.");
+      const status = q.get("collection_status") || q.get("status") || q.get("result");
+      if (status === "approved") approved();
+      else if (["pending", "in_process"].includes(status)) { set("⏳", "Pagamento em análise", "Assim que o pagamento for confirmado, seu pedido será separado."); localStorage.removeItem("cart_v1"); }
+      else set("😕", "Pagamento não concluído", "Não se preocupe, nada foi cobrado. Sua sacola continua salva — você pode tentar de novo ou falar com a gente.");
     }
-    if (order) document.getElementById("ref").textContent = `Pedido nº ${order}`;
-    document.getElementById("wa").href = `https://wa.me/${STORE.whatsapp}?text=${encodeURIComponent(`Olá! Sobre o meu pedido ${order}`)}`;
+    if (q.get("receipt_url")) document.getElementById("ref").innerHTML = `Pedido nº ${code} · <a href="${q.get("receipt_url").replace(/"/g, "")}" target="_blank" rel="noopener">ver comprovante</a>`;
+    else if (orderId) document.getElementById("ref").textContent = `Pedido nº ${code}`;
+    document.getElementById("wa").href = `https://wa.me/${STORE.whatsapp}?text=${encodeURIComponent(`Olá! Sobre o meu pedido ${code}`)}`;
     document.title = `${title_.textContent} — ${STORE.name}`;
   </script>
 </body>

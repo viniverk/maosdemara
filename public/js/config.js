@@ -35,6 +35,12 @@ export const PIX = {
   city: "Joinville",              // cidade de quem recebe (até 15 letras), ex.: "Joinville"
 };
 
+// 4b) Cartão de crédito via InfinitePay (checkout hospedado, até 12x)
+//     handle = sua InfiniteTag (aparece no app da InfinitePay), SEM o $. Deixe "" para desligar.
+export const INFINITEPAY = {
+  handle: "",
+};
+
 // 5) Cloudinary — hospedagem grátis das fotos (usado no modo "spark")
 //    Crie a conta em cloudinary.com e um "upload preset" do tipo Unsigned (veja o README)
 export const CLOUDINARY = {

@@ -17,7 +17,7 @@ service cloud.firestore {
       allow create: if request.resource.data.keys().hasOnly(
             ['code', 'items', 'subtotal', 'shipping', 'total', 'customer', 'status', 'paymentMethod', 'createdAt'])
         && request.resource.data.status == 'pending'
-        && request.resource.data.paymentMethod == 'pix'
+        && request.resource.data.paymentMethod in ['pix', 'card']
         && request.resource.data.createdAt == request.time
         && request.resource.data.items is list
         && request.resource.data.items.size() > 0
@@ -26,6 +26,11 @@ service cloud.firestore {
         && request.resource.data.total > 0
         && request.resource.data.customer is map
         && request.resource.data.customer.size() <= 15;
+      // a cliente, ao voltar do cartão, só pode anexar a referência do pagamento
+      allow update: if resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentRef'])
+        && request.resource.data.paymentRef is map
+        && request.resource.data.paymentRef.size() <= 3;
       allow read, update, delete: if isAdmin();
     }
 

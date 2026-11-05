@@ -1,5 +1,5 @@
 import { db, auth, storage, functions } from "./firebase.js";
-import { STORE, MODE, CLOUDINARY } from "./config.js";
+import { STORE, MODE, CLOUDINARY, INFINITEPAY } from "./config.js";
 import { brl, esc, toast, copyText, productUrl, urlToFile, downloadBlob, slug } from "./utils.js";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -367,9 +367,10 @@ function renderOrders() {
     const phone = String(c.phone || "").replace(/\D/g, "");
     return `<div class="order">
       <div class="order-head">
-        <div><strong>#${o.code || o.id.slice(0, 8)}</strong> <span class="pill ${o.status}">${STATUS[o.status] || o.status}</span><br/><small>${date}${o.paymentMethod ? " · " + esc(o.paymentMethod) : ""}</small></div>
+        <div><strong>#${o.code || o.id.slice(0, 8)}</strong> <span class="pill ${o.status}">${STATUS[o.status] || o.status}</span><br/><small>${date}${o.paymentMethod ? " · " + ({ pix: "Pix", card: "Cartão" }[o.paymentMethod] || esc(o.paymentMethod)) : ""}</small></div>
         <strong>${brl(o.total)}</strong>
       </div>
+      ${o.paymentMethod === "card" && o.status === "pending" ? `<div class="note">💳 Pedido no cartão (InfinitePay). ${o.paymentRef ? `Clique em <b>Verificar pagamento</b> para confirmar.${o.paymentRef.receipt_url ? ` <a href="${esc(o.paymentRef.receipt_url)}" target="_blank">comprovante</a>` : ""}` : "A cliente ainda não voltou do pagamento — se ela pagou, o valor aparece no app da InfinitePay."}</div>` : ""}
       ${o.paymentMethod === "pix" && o.status === "pending" ? `<div class="note">💡 Confira no seu banco se entrou um Pix de <b>${brl(o.total)}</b> e confira também se os valores dos itens batem com os preços da loja. Depois mude para <b>pago</b>; o estoque baixa sozinho.</div>` : ""}
       <div>${(o.items || []).map((i) => `${i.qty}× ${esc(i.name)} (${brl(i.price)})`).join("<br/>")}${o.shipping ? `<br/><small>frete ${brl(o.shipping)}</small>` : ""}</div>
       <div><small>
@@ -383,6 +384,7 @@ function renderOrders() {
         </select>
         <input data-tracking="${o.id}" placeholder="Código de rastreio" value="${esc(o.tracking || "")}" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;flex:1;min-width:140px" />
         <button class="btn small" data-save-order="${o.id}">Salvar</button>
+        ${o.paymentMethod === "card" && o.paymentRef && INFINITEPAY.handle ? `<button class="btn ghost small" data-check-card="${o.id}">Verificar pagamento</button>` : ""}
         ${phone ? `<a class="btn ghost small" target="_blank" href="https://wa.me/55${phone.replace(/^55/, "")}?text=${encodeURIComponent(`Olá ${c.name?.split(" ")[0] || ""}! Aqui é da ${STORE.name}, sobre o seu pedido #${o.code || o.id.slice(0, 8)}.`)}">WhatsApp</a>` : ""}
       </div>
     </div>`;
@@ -390,6 +392,23 @@ function renderOrders() {
 }
 
 $("#olist").addEventListener("click", async (e) => {
+  const cid = e.target.dataset.checkCard;
+  if (cid) {
+    const o = orders.find((x) => x.id === cid);
+    try {
+      const r = await fetch("https://api.checkout.infinitepay.io/payment_check", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handle: INFINITEPAY.handle, order_nsu: o.id, transaction_nsu: o.paymentRef.transaction_nsu, slug: o.paymentRef.slug }),
+      });
+      const j = await r.json();
+      const paid = j.paid === true || (r.ok && j.success !== false && Number(j.paid_amount) > 0);
+      if (paid) {
+        document.querySelector(`[data-status="${cid}"]`).value = "approved";
+        toast(`✅ Pago: ${brl((j.paid_amount || j.amount) / 100)}${j.installments ? ` em ${j.installments}x` : ""}. Clique em Salvar para confirmar.`, 6000);
+      } else toast("Ainda não consta pagamento aprovado na InfinitePay.", 5000);
+    } catch (err) { toast("Não consegui consultar a InfinitePay: " + err.message, 5000); }
+    return;
+  }
   const id = e.target.dataset.saveOrder;
   if (!id) return;
   const status = document.querySelector(`[data-status="${id}"]`).value;
