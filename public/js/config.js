@@ -38,8 +38,8 @@ export const PIX = {
 // 5) Cloudinary — hospedagem grátis das fotos (usado no modo "spark")
 //    Crie a conta em cloudinary.com e um "upload preset" do tipo Unsigned (veja o README)
 export const CLOUDINARY = {
-  cloudName: "",
-  uploadPreset: "",
+  cloudName: "vexaissh",
+  uploadPreset: "maosdemara_site",
 };
 
 // Região das Cloud Functions (São Paulo) — só no modo "blaze"
