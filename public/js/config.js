@@ -30,9 +30,9 @@ export const MODE = "spark";
 
 // 4) Pix (usado no modo "spark")
 export const PIX = {
-  key: "",               // sua chave Pix: CPF/CNPJ só números, e-mail, +55DDDNUMERO ou chave aleatória
+  key: "+5547984988380",               // sua chave Pix: CPF/CNPJ só números, e-mail, +55DDDNUMERO ou chave aleatória
   name: "Maos de Mara",  // nome de quem recebe (até 25 letras)
-  city: "",              // cidade de quem recebe (até 15 letras), ex.: "Joinville"
+  city: "Joinville",              // cidade de quem recebe (até 15 letras), ex.: "Joinville"
 };
 
 // 5) Cloudinary — hospedagem grátis das fotos (usado no modo "spark")
