@@ -5,12 +5,13 @@
 // 1) Cole aqui a configuração do seu app web do Firebase
 //    (Console do Firebase > Configurações do projeto > Seus apps > SDK)
 export const firebaseConfig = {
-  apiKey: "COLE_AQUI",
-  authDomain: "SEU-PROJETO.firebaseapp.com",
-  projectId: "SEU-PROJETO",
-  storageBucket: "SEU-PROJETO.firebasestorage.app",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:xxxxxxxxxxxx",
+  apiKey: "AIzaSyDgdNWpX-naVCsQo-VUGfMwcpL2txD-1eA",
+  authDomain: "maosdemara.firebaseapp.com",
+  projectId: "maosdemara",
+  storageBucket: "maosdemara.firebasestorage.app",
+  messagingSenderId: "599155705608",
+  appId: "1:599155705608:web:d528ffdd43e8bc2f19cebd",
+  measurementId: "G-ZWV19EPT71",
 };
 
 // 2) Dados da loja
