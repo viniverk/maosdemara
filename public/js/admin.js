@@ -1,7 +1,7 @@
 import { db, auth, storage, functions } from "./firebase.js";
 import { STORE, MODE, CLOUDINARY } from "./config.js";
 import { brl, esc, toast, copyText, productUrl, urlToFile, downloadBlob, slug } from "./utils.js";
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
@@ -33,6 +33,14 @@ $("#loginForm").addEventListener("submit", async (e) => {
   try { await signInWithEmailAndPassword(auth, f.email.value, f.password.value); }
   catch { toast("E-mail ou senha inválidos"); }
 });
+$("#googleLogin").onclick = async () => {
+  const provider = new GoogleAuthProvider();
+  try { await signInWithPopup(auth, provider); }
+  catch (e) {
+    if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") return signInWithRedirect(auth, provider);
+    if (e.code !== "auth/popup-closed-by-user") toast("Não foi possível entrar: " + (e.code || e.message), 5000);
+  }
+};
 $("#forgot").onclick = async () => {
   const email = $("#loginForm").email.value;
   if (!email) return toast("Digite seu e-mail primeiro");
