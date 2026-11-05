@@ -34,6 +34,7 @@ input, textarea, select { font: inherit; color: inherit; }
 .logo span { color: var(--accent); font-style: italic; }
 .nav { display: flex; align-items: center; gap: 18px; }
 .nav a { text-decoration: none; color: var(--muted); font-size: .95rem; }
+.nav a.icon-btn { color: var(--ink); }
 .nav a:hover { color: var(--ink); }
 
 .icon-btn { position: relative; display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); }
@@ -171,7 +172,7 @@ input, textarea, select { font: inherit; color: inherit; }
   .hero { padding: 36px 0 48px; }
   .hero-art { max-width: 420px; justify-self: center; }
   .about-leaf { max-width: 140px; }
-  .nav a { display: none; }
+  .nav a:not(.icon-btn) { display: none; }
   .form .row { grid-template-columns: 1fr; }
   .pd-info { padding: 22px; }
 }

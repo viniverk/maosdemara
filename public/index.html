@@ -22,6 +22,9 @@
         <a href="#colecao">Coleção</a>
         <a href="#sobre">Sobre</a>
         <a data-instagram-link target="_blank" rel="noopener">Instagram</a>
+        <a class="icon-btn" href="admin.html" title="Painel da loja" aria-label="Painel da loja">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        </a>
         <button class="icon-btn" id="cartBtn" aria-label="Abrir carrinho">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
           <span class="badge hidden" id="cartCount">0</span>
@@ -78,7 +81,10 @@
   <footer class="site-footer">
     <div class="container">
       <div class="footer-brand"><strong data-store-plain-name></strong><span>bolsas e acessórios · feito à mão</span></div>
-      <div>Pagamento seguro via Mercado Pago • Pix, cartão e boleto</div>
+      <div style="display:grid;gap:6px;justify-items:end">
+        <span>Pagamento seguro via Pix</span>
+        <a href="admin.html" style="color:#fff3e4;opacity:.85">🔒 Área da loja (admin)</a>
+      </div>
     </div>
   </footer>
 
